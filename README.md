@@ -15,8 +15,23 @@ current test environment; tests use an in-process fake add-on server, **not veri
 real Blender**. Restrict access to the loopback listener: the reference add-on has no socket
 authentication and other local processes can send it commands directly.
 
-The host must install a `hive-blender.port/CodeGate` before the addon mounts; `execute_code`
-requires `:confirm true`, gate approval and at most 200000 UTF-8 bytes. The gate is a policy
+Configure the addon in hive-mcp's `config.edn` under `:addons`:
+
+```clojure
+{:addons {"hive.blender"
+          {:port 9876
+           :code-gate {:max-bytes 200000
+                       :deny-substrings ["import os" "subprocess" "requests" "urllib"
+                                         "premium" "telemetry" "polyhaven" "sketchfab"
+                                         "hyper3d" "tripo" "open("]
+                       :require-confirm true}}}}
+```
+
+The addon refuses to mount without a valid `:code-gate`. Alternatively, a host can inject a
+`hive-blender.port/CodeGate` record under that key. The data policy requires a positive
+`:max-bytes` of at most 200000 UTF-8 bytes, a nonempty case-insensitive substring deny-list,
+and `:require-confirm true`; it cannot accept regular expressions or executable policy code.
+`execute_code` always requires `:confirm true` and gate approval. The gate is a policy
 hook, not a Python sandbox. On socket timeout the typed `:blender/unknown-outcome` means a
 mutation might already have run; never replay it automatically. Every call uses a fresh socket,
 closed after reply or error, one outstanding command per socket. Configure socket time/size
