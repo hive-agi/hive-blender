@@ -4,7 +4,7 @@
             [hive-blender.service :as service]
             [hive-blender.port :as port]))
 
-(def output "/home/klein/.cache/hive-craft-blender/out/")
+(def output (str (System/getProperty "user.home") "/.cache/hive-craft-blender/out/"))
 (def link (socket/socket-link {:timeout-ms 60000 :max-reply-bytes 4194304}))
 (def entries (catalog/load-catalog))
 ;; Installed per-session CodeGate: deny external I/O and every optional service.
@@ -12,7 +12,10 @@
             (allow-code? [_ code]
               (and (string? code)
                    (<= (count (.getBytes code "UTF-8")) 200000)
-                   (not (re-find #"(?i)import os|subprocess|requests|urllib|premium|telemetry|polyhaven|sketchfab|hyper3d|tripo|open\(" code))))))
+                   (let [lower (clojure.string/lower-case code)]
+                     (not-any? #(clojure.string/includes? lower %)
+                               ["import os" "subprocess" "requests" "urllib" "premium" "telemetry"
+                                "polyhaven" "sketchfab" "hyper3d" "tripo" "open("]))))))
 (def calls (atom []))
 (defn send! [id params confirm]
   (let [started (System/nanoTime)
@@ -45,7 +48,7 @@
                   " mod=o.modifiers.new('Soft carved edge','BEVEL'); mod.width=0.055; mod.segments=2\n"
                   " o.modifiers.new('Weighted normals','WEIGHTED_NORMAL')\n"
                   "print('ring " ring "'," (count batch) ")")))
-      (Thread/sleep 320)))
+      (Thread/sleep 320))
   (shot! 1))
 (defn stage2 []
   (code! "import bpy\nhoney=bpy.data.materials.new('Amber honey | translucent gold'); honey.diffuse_color=(0.92,0.39,0.045,1); honey.use_nodes=True\np=honey.node_tree.nodes.get('Principled BSDF'); p.inputs['Base Color'].default_value=(0.82,0.31,0.018,1); p.inputs['Metallic'].default_value=0.23; p.inputs['Roughness'].default_value=0.24; p.inputs['Transmission Weight'].default_value=0.18\nfor o in bpy.data.objects:\n if o.name.startswith('Slab_'): o.data.materials.append(honey)\ndark=bpy.data.materials.new('Midnight basalt'); dark.diffuse_color=(0.012,0.021,0.031,1); dark.use_nodes=True; dark.node_tree.nodes.get('Principled BSDF').inputs['Base Color'].default_value=(0.012,0.021,0.031,1)\nbpy.ops.mesh.primitive_cylinder_add(vertices=6, radius=7.2, depth=0.22, location=(0,0,-0.23)); o=bpy.context.object; o.name='Midnight ground'; o.data.materials.append(dark)\nprint('amber + basalt')")
@@ -66,4 +69,4 @@
               "for o in slabs: o.select_set(False)\n"
               "print('STL slab meshes:',len(slabs))"))
   (shot! 5))
-(defn run! [] (stage1) (stage2) (stage3) (stage4) (stage5) {:calls (count @calls) :ms (reduce + (map :ms @calls))}))
+(defn run! [] (stage1) (stage2) (stage3) (stage4) (stage5) {:calls (count @calls) :ms (reduce + (map :ms @calls))})
