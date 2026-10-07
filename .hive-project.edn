@@ -1,0 +1,6 @@
+{:project-id  "hive-blender"
+ :description "IAddon exposing Blender as MCP tools: a portable scene/command core (JVM, cljw, cljrs, cljs), a loopback control client to the Blender-side socket addon, and model export (STL/3MF) feeding hive-bambu."
+ :type        :library
+ :kg-backend  :datahike
+ :parent      "hive"
+ :carto       {:source-roots ["dev" "resources" "src" "test"]}}
