@@ -30,7 +30,8 @@
    :mutations [["ignore-gate" (fn [_ _ _] {:result {:ok {}} :sent 1})]]})
 
 (deftest code-gate-is-required
-  (let [link (stub/stub-link {"status" "success" "result" 1})]
+  (let [link (stub/stub-link {"status" "success" "result" 1})
+        export [{:id "export_scene"}]]
     (is (= :blender/code-refused
            (get-in (service/call entries link nil "execute_code" code true) [:error :kind])))
     (is (= :blender/confirmation-required
@@ -38,4 +39,9 @@
     (is (= :blender/code-refused
            (get-in (service/call entries link (stub/gate 200001) "execute_code"
                                  {"code" (apply str (repeat 200001 "a"))} true) [:error :kind])))
-    (is (empty? @(:calls link)))))
+    (is (= :blender/invalid-export-format
+           (get-in (service/call export link (stub/gate 16) "export_scene"
+                                 {"format" "stl" "filepath" "/tmp/model.stl"} false) [:error :kind])))
+    (is (empty? @(:calls link)))
+    (is (= {:ok 1} (service/call export link (stub/gate 16) "export_scene"
+                                 {"format" "glb" "filepath" "/tmp/model.glb"} false)))))

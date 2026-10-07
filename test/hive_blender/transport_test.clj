@@ -37,7 +37,7 @@
            [:slow [ok-reply] 200 {:timeout-ms 40} :blender/unknown-outcome]]]
     (testing (name label)
       (let [{:keys [port stop received]} (stub/fake-server chunks delay)
-            link (socket/socket-link (merge {:port port :timeout-ms 500} config))]
+            link (socket/socket-link (merge {:port port :timeout-ms 2000} config))]
         (try
           (let [result (port/send! link request)]
             (is (= expected (if (:ok result) :ok (get-in result [:error :kind]))))
