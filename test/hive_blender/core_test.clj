@@ -36,9 +36,14 @@
    :mutations [["blind-success" (fn [x] {:ok (get x "result")})]]})
 
 (deftest catalog-is-extracted-base-only
-  (let [ids (set (core/commands (catalog/load-catalog)))]
+  (let [entries (catalog/load-catalog)
+        ids (set (core/commands entries))]
     (is (contains? ids "execute_code"))
     (is (contains? ids "get_addon_info"))
     (is (contains? ids "export_scene"))
     (is (not (contains? ids "create_rodin_job")))
-    (is (not (contains? ids "set_telemetry_consent_enabled")))))
+    (doseq [id ["set_telemetry_consent" "get_telemetry_consent" "get_tripo_status"
+                "get_polyhaven_status" "get_sketchfab_status"]]
+      (is (not (contains? ids id)))
+      (is (= :blender/unknown-command
+             (get-in (core/command entries id {} false) [:error :kind]))))))

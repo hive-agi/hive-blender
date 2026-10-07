@@ -11,6 +11,11 @@
   [entries id params confirm]
   (cond
     (not (some #(= id (:id %)) entries)) {:error {:kind :blender/unknown-command :hint "Command is not in the base catalog."}}
+    (contains? #{"get_telemetry_consent" "set_telemetry_consent"
+                 "get_polyhaven_status" "get_hyper3d_status" "get_sketchfab_status"
+                 "get_polypizza_status" "get_hunyuan3d_status" "get_tripo_status"}
+               id)
+    {:error {:kind :blender/forbidden-command :hint "Telemetry, Premium and provider status commands are disabled."}}
     (not (map? params)) {:error {:kind :blender/invalid-params :hint "Params must be a map."}}
     (and (= id "execute_code") (not (true? confirm))) {:error {:kind :blender/confirmation-required :hint "Set :confirm true for execute_code."}}
     :else {:ok {"type" id "params" params}}))
