@@ -1,0 +1,1 @@
+{:absent {:success? false, :errors ["Invalid or missing :code-gate; configure a CodeGate or {:max-bytes n :deny-substrings [...] :require-confirm true}."]}, :invalid {:success? false, :errors ["Invalid or missing :code-gate; configure a CodeGate or {:max-bytes n :deny-substrings [...] :require-confirm true}."]}, :configured {:success? true, :errors []}}

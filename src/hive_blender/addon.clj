@@ -2,6 +2,7 @@
   "Host-neutral IAddon with mandatory injected code authorization."
   (:require [hive-addon.protocol :as addon]
             [hive-blender.catalog :as catalog]
+            [hive-blender.gate :as gate]
             [hive-blender.port :as port]
             [hive-blender.service :as service]
             [hive-blender.transport.socket :as socket]
@@ -33,10 +34,13 @@
   (addon-type [_] :external)
   (capabilities [_] #{:tools :health-reporting})
   (initialize! [_ cfg]
-    (let [gate (or (:code-gate cfg) (:code-gate config))]
-      (if-not (satisfies? port/CodeGate gate)
-        {:success? false :errors ["Install a CodeGate before mounting hive.blender."]}
-        (do (reset! state {:gate gate :link (or (:link cfg) (:link config) (socket/socket-link {}))
+    (let [policy (if (contains? cfg :code-gate) (:code-gate cfg) (:code-gate config))
+          code-gate (if (satisfies? port/CodeGate policy) policy (gate/code-gate policy))]
+      (if-not code-gate
+        {:success? false :errors ["Invalid or missing :code-gate; configure a CodeGate or {:max-bytes n :deny-substrings [...] :require-confirm true}."]}
+        (do (reset! state {:gate code-gate
+                           :link (or (:link cfg) (:link config)
+                                     (socket/socket-link {:port (or (:port cfg) (:port config) 9876)}))
                            :entries (catalog/load-catalog)})
             {:success? true :errors []}))))
   (shutdown! [_] (when-let [link (:link @state)] (port/close! link)) (reset! state {}) nil)
