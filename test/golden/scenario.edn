@@ -1,0 +1,21 @@
+{:code {:result {:ok {"pong" true}}, :sent 1},
+ :oversize
+ {:result
+  {:error
+   {:kind :blender/code-refused,
+    :hint
+    "An installed CodeGate must approve code of at most 200000 UTF-8 bytes."}},
+  :sent 0},
+ :ping {:result {:ok {"pong" true}}, :sent 1},
+ :unconfirmed
+ {:result
+  {:error
+   {:kind :blender/confirmation-required,
+    :hint "Set :confirm true for execute_code."}},
+  :sent 0},
+ :unknown
+ {:result
+  {:error
+   {:kind :blender/unknown-command,
+    :hint "Command is not in the base catalog."}},
+  :sent 0}}

@@ -1,0 +1,7 @@
+{:addon/id "hive.blender" :addon/kind :addon :addon/type :external
+ :addon/version "0.1.0" :addon/init-ns "hive-blender.addon"
+ :addon/init-fn "addon-ctor" :addon/config {:port 9876}
+ :addon/capabilities #{:tools :health-reporting} :addon/dependencies #{}
+ :addon/description "Blender add-on base commands via guarded loopback socket"
+ :addon/maturity :experimental :addon/license "MIT" :addon/trust-class :foss
+ :addon/lifecycle {:policy :lazy :idle-ms 900000}}

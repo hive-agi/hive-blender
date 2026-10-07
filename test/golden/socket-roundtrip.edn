@@ -1,0 +1,2 @@
+{:failure {:error {:kind :blender/reply-error, :hint "bad"}},
+ :success {:ok {"pong" true}}}

@@ -1,0 +1,4 @@
+{:lib io.github.hive-agi/hive-blender :minor 0
+ :license {:name "MIT" :url "https://opensource.org/licenses/MIT"}
+ :scm-url "https://github.com/hive-agi/hive-blender"
+ :src-dirs ["src" "resources"] :publish :clojars}

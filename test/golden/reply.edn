@@ -1,0 +1,7 @@
+{:failure {:error {:kind :blender/reply-error, :hint "bad"}},
+ :malformed
+ {:error
+  {:kind :blender/invalid-reply,
+   :hint "Expected a Blender success or error envelope."}},
+ :nested {:error {:kind :blender/result-error, :hint "bad"}},
+ :success {:ok 42}}
