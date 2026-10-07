@@ -1,0 +1,11 @@
+{:confirmed
+ {:ok {"type" "execute_code", "params" {"code" "print(1)"}}},
+ :known {:ok {"type" "ping", "params" {}}},
+ :unconfirmed
+ {:error
+  {:kind :blender/confirmation-required,
+   :hint "Set :confirm true for execute_code."}},
+ :unknown
+ {:error
+  {:kind :blender/unknown-command,
+   :hint "Command is not in the base catalog."}}}
