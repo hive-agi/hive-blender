@@ -1,0 +1,1 @@
+{:default {:port 9876, :timeout-ms 30000, :max-reply-bytes 1048576}}

@@ -1,0 +1,5 @@
+{:no-gate
+ {:status :degraded,
+  :reason :blender/code-gate-missing,
+  :hint "Install a CodeGate before mounting."},
+ :ready {:status :ready, :protocol 13}}

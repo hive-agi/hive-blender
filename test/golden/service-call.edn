@@ -1,0 +1,5 @@
+{:missing
+ {:error
+  {:kind :blender/unknown-command,
+   :hint "Command is not in the base catalog."}},
+ :ping {:ok {"protocol_version" 13}}}

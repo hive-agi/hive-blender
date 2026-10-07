@@ -1,0 +1,13 @@
+{:default
+ [{:id "get_scene_info"}
+  {:id "get_world_state_snapshot"}
+  {:id "get_addon_info"}
+  {:id "get_object_info"}
+  {:id "list_scene_items"}
+  {:id "get_viewport_screenshot"}
+  {:id "pick_viewport_object"}
+  {:id "execute_code"}
+  {:id "describe_node_type"}
+  {:id "bpy_api_lookup"}
+  {:id "drain_human_activity"}
+  {:id "export_scene"}]}

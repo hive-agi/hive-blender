@@ -1,0 +1,4 @@
+{:default
+ {:name "blender",
+  :description
+  "Blender base command catalog, doctor and guarded call."}}
