@@ -10,6 +10,14 @@
 
 (def policy {:max-bytes 32 :deny-substrings ["Import OS" "subprocess"] :require-confirm true})
 
+(deftrifecta gate-constructor-contract gate/code-gate
+  {:golden-path "test/golden/gate-constructor.edn"
+   :cases {:configured policy :invalid (assoc policy :require-confirm false) :absent nil}
+   :xf #(boolean %)
+   :gen (gen/elements [policy nil (assoc policy :max-bytes 0)])
+   :pred #(or (nil? %) (satisfies? port/CodeGate %)) :num-tests 12
+   :mutations [["no-policy" (fn [_] nil)]]})
+
 (defn gate-verdict
   "Evaluate a code string against a configured gate."
   [code]
