@@ -1,0 +1,39 @@
+{:catalog
+ {:mounted true,
+  :result
+  {:content
+   [{:type "text",
+     :text
+     "[{:id \"get_scene_info\"} {:id \"get_world_state_snapshot\"} {:id \"get_addon_info\"} {:id \"get_object_info\"} {:id \"list_scene_items\"} {:id \"get_viewport_screenshot\"} {:id \"pick_viewport_object\"} {:id \"execute_code\"} {:id \"describe_node_type\"} {:id \"bpy_api_lookup\"} {:id \"drain_human_activity\"} {:id \"get_telemetry_consent\"} {:id \"set_telemetry_consent\"} {:id \"get_polyhaven_status\"} {:id \"get_hyper3d_status\"} {:id \"get_sketchfab_status\"} {:id \"get_polypizza_status\"} {:id \"get_hunyuan3d_status\"} {:id \"get_tripo_status\"} {:id \"export_scene\"}]"}]},
+  :sent 0},
+ :code-confirmed
+ {:mounted true,
+  :result {:content [{:type "text", :text "\"pong\""}]},
+  :sent 1},
+ :code-refused
+ {:mounted true,
+  :result
+  {:isError true,
+   :content
+   [{:type "text",
+     :text
+     ":blender/confirmation-required: Set :confirm true for execute_code."}]},
+  :sent 0},
+ :ping
+ {:mounted true,
+  :result
+  {:isError true,
+   :content
+   [{:type "text",
+     :text
+     ":blender/unknown-command: Command is not in the base catalog."}]},
+  :sent 0},
+ :unknown
+ {:mounted true,
+  :result
+  {:isError true,
+   :content
+   [{:type "text",
+     :text
+     ":blender/unknown-tool-command: Choose catalog, doctor or call."}]},
+  :sent 0}}

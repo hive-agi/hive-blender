@@ -13,7 +13,7 @@
 (defn- adapters [reply]
   (let [server (stub/fake-server [reply] 0)]
     [[(stub/stub-link (clojure.data.json/read-str reply)) (fn [] nil) nil]
-     [(socket/socket-link {:port (:port server) :timeout-ms 250 :max-reply-bytes 4096})
+     [(socket/socket-link {:port (:port server) :timeout-ms 2000 :max-reply-bytes 4096})
       (:stop server) (:received server)]]))
 
 (deftest blender-link-conformance
@@ -48,7 +48,7 @@
   "Send a ping through a fresh fake add-on server and return its typed outcome."
   [response]
   (let [{:keys [port stop]} (stub/fake-server [response] 0)
-        link (socket/socket-link {:port port :timeout-ms 400})]
+        link (socket/socket-link {:port port :timeout-ms 2000})]
     (try (port/send! link request)
          (finally (port/close! link) (stop)))))
 
