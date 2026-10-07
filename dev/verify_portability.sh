@@ -13,7 +13,7 @@ for host in "$@"; do
   case "$host" in
     jvm) timeout "${seconds}s" clojure -M:dev -m portability > "$report/jvm.log" 2>&1 || status=failed ;;
     cljw) timeout "${seconds}s" cljw -cp src:dev dev/portability.cljc > "$report/cljw.log" 2>&1 || status=failed ;;
-    cljrs) binary=${CLJRS:-/home/klein/PP/clojurust/target/debug/cljrs}
+    cljrs) binary=${CLJRS:-$HOME/PP/clojurust/target/debug/cljrs}
            timeout "${seconds}s" "$binary" run dev/portability.cljc --src-path src --src-path dev > "$report/cljrs.log" 2>&1 || status=failed ;;
     cljs) timeout "${seconds}s" clojure -M:cljs -m shadow.cljs.devtools.cli release portability > "$report/cljs-build.log" 2>&1 || status=failed
           if [[ $status == passed ]]; then timeout "${seconds}s" node target/portability.js > "$report/cljs.log" 2>&1 || status=failed; fi ;;
