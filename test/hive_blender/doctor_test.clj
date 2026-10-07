@@ -12,10 +12,10 @@
 
 (deftrifecta doctor-contract diagnosis
   {:golden-path "test/golden/doctor.edn"
-   :cases {:ready {"status" "success" "result" {"pong" true}}
-           :bad-ping {"status" "success" "result" {"pong" false}}
+   :cases {:ready {"status" "success" "result" {"protocol_version" 13}}
+           :bad-version {"status" "success" "result" {"protocol_version" 12}}
            :failure {"status" "error" "message" "offline"}}
-   :gen (gen/elements [{"status" "success" "result" {"pong" true}}
+   :gen (gen/elements [{"status" "success" "result" {"protocol_version" 13}}
                        {"status" "error" "message" "offline"}])
    :pred #(contains? #{:ready :degraded} (:status %)) :num-tests 15
    :mutations [["always-ready" (fn [_] {:status :ready :protocol 13})]]})

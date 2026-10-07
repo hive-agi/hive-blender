@@ -1,9 +1,11 @@
-{:bad-ping
+{:bad-version
  {:status :degraded,
-  :reason :blender/ping-invalid,
-  :hint "Check the GUI Blender add-on and loopback port 9876."},
+  :reason :blender/protocol-mismatch,
+  :hint
+  "Check GUI Blender add-on protocol version 13 and loopback port 9876."},
  :failure
  {:status :degraded,
   :reason :blender/reply-error,
-  :hint "Check the GUI Blender add-on and loopback port 9876."},
+  :hint
+  "Check GUI Blender add-on protocol version 13 and loopback port 9876."},
  :ready {:status :ready, :protocol 13}}

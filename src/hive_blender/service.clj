@@ -21,7 +21,7 @@
       :else (port/send! link (:ok request)))))
 
 (defn doctor
-  "Probe the real Blender socket with ping; distinguish missing policy from a failed transport."
+  "Probe Blender protocol version 13 over the link; distinguish missing policy and failed transport."
   [link gate]
   (cond
     (not (satisfies? port/CodeGate gate))
@@ -31,11 +31,11 @@
     {:status :degraded :reason :blender/link-missing
      :hint "Start a GUI Blender with its add-on listening on localhost:9876."}
     :else
-    (let [result (port/send! link {"type" "ping" "params" {}})]
-      (if (and (= true (get (:ok result) "pong")))
+    (let [result (port/send! link {"type" "get_addon_info" "params" {}})]
+      (if (= 13 (get (:ok result) "protocol_version"))
         {:status :ready :protocol 13}
-        {:status :degraded :reason (or (get-in result [:error :kind]) :blender/ping-invalid)
-         :hint "Check the GUI Blender add-on and loopback port 9876."}))))
+        {:status :degraded :reason (or (get-in result [:error :kind]) :blender/protocol-mismatch)
+         :hint "Check GUI Blender add-on protocol version 13 and loopback port 9876."}))))
 
 (m/=> call [:=> [:cat [:sequential :map] :any :any :string :map :boolean] :map])
 (m/=> doctor [:=> [:cat :any :any] :map])
