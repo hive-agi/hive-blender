@@ -60,7 +60,7 @@ jobs:
           restore-keys: m2-${{ runner.os }}-
 
       # Gate before the bump: a red suite must not mint, tag or ship a version.
-      # Unit suite only: the integration suite wants melt on PATH.
+      # Fake-server suite requires no installed Blender.
       - name: Test
         run: clojure -M:test unit
 

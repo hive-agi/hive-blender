@@ -21,11 +21,21 @@
       :else (port/send! link (:ok request)))))
 
 (defn doctor
-  "Report local readiness without pretending a health check probes Blender's GUI."
+  "Probe the real Blender socket with ping; distinguish missing policy from a failed transport."
   [link gate]
-  {:status (if (and (satisfies? port/BlenderLink link) (satisfies? port/CodeGate gate))
-             :ready :degraded)
-   :hint "A real Blender GUI and installed add-on are required for end-to-end verification."})
+  (cond
+    (not (satisfies? port/CodeGate gate))
+    {:status :degraded :reason :blender/code-gate-missing
+     :hint "Install a CodeGate before mounting."}
+    (not (satisfies? port/BlenderLink link))
+    {:status :degraded :reason :blender/link-missing
+     :hint "Start a GUI Blender with its add-on listening on localhost:9876."}
+    :else
+    (let [result (port/send! link {"type" "ping" "params" {}})]
+      (if (and (= true (get (:ok result) "pong")))
+        {:status :ready :protocol 13}
+        {:status :degraded :reason (or (get-in result [:error :kind]) :blender/ping-invalid)
+         :hint "Check the GUI Blender add-on and loopback port 9876."}))))
 
 (m/=> call [:=> [:cat [:sequential :map] :any :any :string :map :boolean] :map])
 (m/=> doctor [:=> [:cat :any :any] :map])
