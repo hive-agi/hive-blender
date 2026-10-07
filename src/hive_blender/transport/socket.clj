@@ -42,20 +42,25 @@
   port/BlenderLink
   (send! [_ command]
     (locking lock
-      (try
-        (let [s (connect! config)
-              _ (reset! socket s)
-              payload (.getBytes (json/write-str command) StandardCharsets/UTF_8)]
-          (.write (.getOutputStream s) payload)
-          (.flush (.getOutputStream s))
-          (core/reply (read-object! s (:max-reply-bytes config))))
-        (catch SocketTimeoutException _
-          {:error {:kind :blender/unknown-outcome :hint "Timed out after dispatch; do not replay."}})
-        (catch Exception e
-          {:error {:kind (or (:kind (ex-data e)) :blender/transport-error)
-                   :hint (or (.getMessage e) "Transport failed.")}})
-        (finally
-          (when-let [s @socket] (.close s) (reset! socket nil))))))
+      (let [dispatched? (volatile! false)]
+        (try
+          (let [s (connect! config)
+                _ (reset! socket s)
+                payload (.getBytes (json/write-str command) StandardCharsets/UTF_8)]
+            (vreset! dispatched? true)
+            (.write (.getOutputStream s) payload)
+            (.flush (.getOutputStream s))
+            (core/reply (read-object! s (:max-reply-bytes config))))
+          (catch SocketTimeoutException _
+            {:error {:kind (if @dispatched? :blender/unknown-outcome :blender/connect-timeout)
+                     :hint (if @dispatched? "Timed out after dispatch; do not replay."
+                               "Connection timed out before dispatch.")}})
+          (catch Exception e
+            {:error {:kind (or (:kind (ex-data e))
+                               (if @dispatched? :blender/unknown-outcome :blender/transport-error))
+                     :hint (or (.getMessage e) "Transport failed; do not replay after dispatch.")}})
+          (finally
+            (when-let [s @socket] (.close s) (reset! socket nil)))))))
   (close! [_]
     (locking lock
       (when-let [s @socket] (.close s) (reset! socket nil)))))
