@@ -53,6 +53,10 @@
   (is (false? (:success? (mount-result (assoc policy :max-bytes 200001)))))
   (is (:success? (mount-result (stub/gate 16))))
   (is (:success? (mount-result policy)))
+  (let [instance (blender/addon-ctor {:code-gate policy})]
+    (is (:success? (addon/initialize! instance {})))
+    (is (= 9876 (get-in @(:state instance) [:link :config :port])))
+    (addon/shutdown! instance))
   (let [instance (blender/addon-ctor {:code-gate policy :port 12345})]
     (is (:success? (addon/initialize! instance {})))
     (is (= 12345 (get-in @(:state instance) [:link :config :port])))
