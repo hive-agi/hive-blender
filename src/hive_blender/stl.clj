@@ -1,7 +1,8 @@
 (ns hive-blender.stl
   "STL values, Blender snippets and binary inspection."
   (:require [clojure.data.json :as json] [clojure.java.io :as io]
-            [clojure.string :as str] [malli.core :as m])
+            [clojure.string :as str] [malli.core :as m]
+            [hive-schemas.schema :as schemas])
   (:import (java.nio ByteBuffer ByteOrder)
            (java.nio.file Files LinkOption)
            (java.security MessageDigest) (java.util HexFormat)))
@@ -9,7 +10,7 @@
 (def ExportStlRequest
   [:map {:closed true} [:path :string]
    [:objects [:or [:enum :selected :all] [:vector {:min 1} :string]]]
-   [:scale {:optional true} [:and number? [:fn #(and (Double/isFinite (double %)) (< 0 % 1001))]]]
+   [:scale {:optional true} [:and number? [:fn #(and (Double/isFinite (double %)) (< 0 %) (<= % 1000))]]]
    [:target-mm {:optional true} [:and number? [:fn #(and (Double/isFinite (double %)) (pos? %))]]]])
 
 (def ModelArtifact
@@ -17,6 +18,9 @@
    [:units [:= :mm]] [:mm number?] [:bbox-mm [:tuple number? number? number?]]
    [:provenance [:map [:source [:= :blender]] [:objects [:vector :string]]
                  [:scale number?] [:blender-version :string]]]])
+
+(schemas/register-all! {:hive.blender/ExportStlRequest ExportStlRequest
+                        :hive.blender/ModelArtifact ModelArtifact})
 
 (defn valid-request?
   "Accept an unused nonsymlink STL path under user.home and one sizing method."
@@ -37,26 +41,29 @@
   "Build a Blender snippet from a validated request and positive millimetre scale."
   [request scale query?]
   (let [names (if (vector? (:objects request)) (:objects request) [])
+        python-str #(str/replace (json/write-str %) "\\/" "/")
         selector (case (:objects request) :selected "o.select_get()" :all "True"
-                       (str "any(o.name == n or o.name.startswith(n) for n in " (json/write-str names) ")"))]
-    (str "import bpy\nfrom mathutils import Vector\n"
+                       (str "any(o.name == n or o.name.startswith(n) for n in " (python-str names) ")"))]
+    (str "import bpy\nimport json\nfrom mathutils import Vector\n"
          "_objects = [o for o in bpy.context.scene.objects if o.type == 'MESH' and " selector "]\n"
          "if not _objects: raise ValueError('No mesh objects selected')\n"
          "_points = [o.matrix_world @ Vector(c) for o in _objects for c in o.bound_box]\n"
          "_dims = [max(p[i] for p in _points) - min(p[i] for p in _points) for i in range(3)]\n"
          (if query?
-           "print('HIVE_BBOX:' + ','.join(str(d) for d in _dims))\n"
-           (str "_selected = list(bpy.context.selected_objects)\n"
+           "print('HIVE_BBOX:' + json.dumps(_dims))\n"
+           (str "import pathlib\n"
+                "if pathlib.Path(" (python-str (:path request)) ").exists(): raise FileExistsError('Destination exists')\n"
+                "_selected = list(bpy.context.selected_objects)\n"
                 "try:\n    bpy.ops.object.select_all(action='DESELECT')\n"
                 "    for o in _objects: o.select_set(True)\n"
                 "    if bpy.app.version >= (4, 0, 0):\n"
-                "        bpy.ops.wm.stl_export(filepath=" (json/write-str (:path request))
+                "        bpy.ops.wm.stl_export(filepath=" (python-str (:path request))
                 ", export_selected_objects=True, apply_modifiers=True, global_scale=" (double scale) ")\n"
-                "    else:\n        bpy.ops.export_mesh.stl(filepath=" (json/write-str (:path request))
+                "    else:\n        bpy.ops.export_mesh.stl(filepath=" (python-str (:path request))
                 ", use_selection=True, use_mesh_modifiers=True, global_scale=" (double scale) ")\n"
                 "finally:\n    bpy.ops.object.select_all(action='DESELECT')\n"
                 "    for o in _selected: o.select_set(True)\n"
-                "print('HIVE_EXPORT:' + ','.join(o.name for o in _objects) + '|' + bpy.app.version_string)\n")))))
+                "print('HIVE_EXPORT:' + json.dumps({'objects': [o.name for o in _objects], 'version': bpy.app.version_string}))\n")))))
 
 (defn parse-bbox
   "Read three finite nonnegative Blender dimension values from a query receipt."
@@ -64,7 +71,7 @@
   (when (string? output)
     (when-let [line (some #(when (str/starts-with? % "HIVE_BBOX:") %) (str/split-lines output))]
       (try
-        (let [dims (mapv double (json/read-str (str "[" (subs line (count "HIVE_BBOX:")) "]")))]
+        (let [dims (mapv double (json/read-str (subs line (count "HIVE_BBOX:"))))]
           (when (and (= 3 (count dims))
                      (every? #(and (Double/isFinite %) (<= 0 %)) dims)) dims))
         (catch Exception _ nil)))))

@@ -2,9 +2,9 @@
  ["_objects = [o for o in bpy.context.scene.objects if o.type == 'MESH' and True]"],
  :named
  ["_objects = [o for o in bpy.context.scene.objects if o.type == 'MESH' and any(o.name == n or o.name.startswith(n) for n in [\"Cube\",\"Box\"])]"
-  "        bpy.ops.wm.stl_export(filepath=\"\\/home\\/klein\\/stl-export-test.stl\", export_selected_objects=True, apply_modifiers=True, global_scale=42.0)"
-  "        bpy.ops.export_mesh.stl(filepath=\"\\/home\\/klein\\/stl-export-test.stl\", use_selection=True, use_mesh_modifiers=True, global_scale=42.0)"],
+  "        bpy.ops.wm.stl_export(filepath=\"<HOME>/stl-export-test.stl\", export_selected_objects=True, apply_modifiers=True, global_scale=42.0)"
+  "        bpy.ops.export_mesh.stl(filepath=\"<HOME>/stl-export-test.stl\", use_selection=True, use_mesh_modifiers=True, global_scale=42.0)"],
  :selected
  ["_objects = [o for o in bpy.context.scene.objects if o.type == 'MESH' and o.select_get()]"
-  "        bpy.ops.wm.stl_export(filepath=\"\\/home\\/klein\\/stl-export-test.stl\", export_selected_objects=True, apply_modifiers=True, global_scale=1000.0)"
-  "        bpy.ops.export_mesh.stl(filepath=\"\\/home\\/klein\\/stl-export-test.stl\", use_selection=True, use_mesh_modifiers=True, global_scale=1000.0)"]}
+  "        bpy.ops.wm.stl_export(filepath=\"<HOME>/stl-export-test.stl\", export_selected_objects=True, apply_modifiers=True, global_scale=1000.0)"
+  "        bpy.ops.export_mesh.stl(filepath=\"<HOME>/stl-export-test.stl\", use_selection=True, use_mesh_modifiers=True, global_scale=1000.0)"]}

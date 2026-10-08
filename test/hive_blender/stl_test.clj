@@ -9,7 +9,8 @@
             [hive-blender.addon :as addon]
             [clojure.string :as str]
             [clojure.java.io :as io]
-            [malli.core :as m])
+            [malli.core :as m]
+            [hive-blender.transport.socket])
   (:import (java.nio.file Files Path LinkOption StandardCopyOption)))
 
 (def fixture "test/fixture/triangle.stl")
@@ -22,7 +23,9 @@
            :named [(assoc request :objects ["Cube" "Box"]) 42 false]}
    :xf #(vec (filter (fn [s] (or (str/includes? s "stl_export")
                                     (str/includes? s "export_mesh.stl")
-                                    (str/includes? s "_objects ="))) (str/split-lines %)))
+                                    (str/includes? s "_objects =")))
+                     (map (fn [line] (str/replace line (System/getProperty "user.home") "<HOME>"))
+                          (str/split-lines %))))
    :apply? true
    :gen (gen/tuple (gen/return request) (gen/elements [1 1000]) gen/boolean)
    :pred #(and (str/includes? % "o.type == 'MESH'")
@@ -41,8 +44,8 @@
 
 (deftrifecta bbox-contract stl/parse-bbox
   {:golden-path "test/golden/stl-bbox.edn"
-   :cases {:valid "HIVE_BBOX:1,2,3" :negative "HIVE_BBOX:-1,2,3" :nan "HIVE_BBOX:NaN,2,3"}
-   :gen (gen/elements ["HIVE_BBOX:1,2,3" "bad"])
+   :cases {:valid "HIVE_BBOX:[1,2,3]" :negative "HIVE_BBOX:[-1,2,3]" :nan "HIVE_BBOX:[NaN,2,3]"}
+   :gen (gen/elements ["HIVE_BBOX:[1,2,3]" "bad"])
    :pred #(or (nil? %) (and (= 3 (count %)) (every? number? %))) :num-tests 16
    :mutations [["always-nil" (fn [_] nil)]]})
 
@@ -63,11 +66,11 @@
   (send! [_ command]
     (let [code (get-in command ["params" "code"])]
       (if (str/includes? code "HIVE_BBOX:")
-        {:ok {"result" "HIVE_BBOX:0.01,0.02,0.03"}}
+        {:ok {"result" "HIVE_BBOX:[0.01,0.02,0.03]"}}
         (do (Files/copy (.toPath (io/file fixture))
                         (.toPath (io/file (:path request)))
                         (make-array java.nio.file.CopyOption 0))
-            {:ok {"result" "HIVE_EXPORT:Cube|4.3.0"}}))))
+            {:ok {"result" "HIVE_EXPORT:{\"objects\":[\"Cube\"],\"version\":\"4.3.0\"}"}}))))
   (close! [_] nil))
 
 (defn export-case
@@ -94,6 +97,28 @@
                (:confirmed %)) :num-tests 8
    :mutations [["no-export" (fn [_] {:result {:format :glb :bytes 0} :sent 0 :confirmed false})]]})
 
+(deftest export-gate-and-confirmation
+  (let [calls (atom [])
+        approvals (atom [])
+        gate (reify port/CodeGate
+               (allow-code? [_ code] (swap! approvals conj code) true))
+        link (->RecordingLink (stub/stub-link {"status" "success" "result" {"result" "HIVE_EXPORT:{\"objects\":[\"Cube\"],\"version\":\"4.3\"}"}}) calls)
+        result (service/export-stl [{:id "execute_code"}] link gate request)]
+    (is (= :blender/invalid-stl (get-in result [:error :kind])))
+    (is (= 1 (count @approvals)))
+    (is (= 1 (count @calls)))
+    (is (= (first @approvals) (get-in (first @calls) ["params" "code"])))
+    (is (= "execute_code" (get (first @calls) "type")))))
+
+(deftest export-errors-are-typed
+  (let [entries [{:id "execute_code"}]
+        existing (assoc request :path fixture)
+        link (stub/stub-link {"status" "success" "result" {"result" "missing"}})]
+    (is (= :blender/invalid-request (get-in (service/export-stl entries link (stub/gate 200000) existing) [:error :kind])))
+    (is (empty? @(:calls link)) "An existing destination never dispatches")
+    (is (= :blender/export-failed (get-in (service/export-stl entries link (stub/gate 1) request) [:error :kind])))
+    (is (= :blender/invalid-stl (get-in (service/export-stl entries link (stub/gate 200000) request) [:error :kind])))))
+
 (deftest validator-rejects-corrupt-geometry
   (let [file (Files/createTempFile (Path/of (System/getProperty "user.home") (make-array String 0)) "stl-invalid" ".stl"
                                     (make-array java.nio.file.attribute.FileAttribute 0))]
@@ -105,3 +130,30 @@
         (Files/write file bytes (make-array java.nio.file.OpenOption 0)))
       (is (thrown? Exception (stl/inspect (str file))))
       (finally (Files/deleteIfExists file)))))
+
+(defmacro live-or-skip
+  "Run body when the Blender listener is up; otherwise print SKIP and assert absence."
+  [& body]
+  `(let [socket# (java.net.Socket.)
+         up?# (try (.connect socket# (java.net.InetSocketAddress. "127.0.0.1" 9876) 500)
+                   true
+                   (catch java.io.IOException _# false)
+                   (finally (.close socket#)))]
+     (if up?#
+       (do ~@body)
+       (do (println "SKIP Blender GUI listener on 127.0.0.1:9876")
+           (is (false? up?#))))))
+
+(deftest live-blender-export
+  (live-or-skip
+    (let [dest (str (System/getProperty "user.home") "/blender-live-export-" (java.util.UUID/randomUUID) ".stl")
+          link (hive-blender.transport.socket/socket-link {:port 9876 :timeout-ms 30000})
+          gate (stub/gate 200000)]
+      (try
+        (let [result (service/export-stl [{:id "execute_code"}] link gate {:path dest :objects :all})]
+          (is (nil? (:error result)) (pr-str result))
+          (when-let [artifact (:ok result)]
+            (is (m/validate stl/ModelArtifact artifact))
+            (is (pos? (:mm artifact)))
+            (println "LIVE Blender STL" (select-keys artifact [:bytes :sha256 :bbox-mm]))))
+        (finally (port/close! link) (Files/deleteIfExists (.toPath (io/file dest))))))))

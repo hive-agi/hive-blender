@@ -4,7 +4,8 @@
             [hive-blender.port :as port]
             [malli.core :as m]
             [hive-blender.stl :as stl]
-            [clojure.string]))
+            [clojure.string]
+            [clojure.data.json]))
 
 (defn call
   "Send a catalogued command; arbitrary code requires a mounted gate and confirmation."
@@ -70,14 +71,16 @@
               (let [receipt (get-in outcome [:ok "result"])
                     marker (some #(when (clojure.string/starts-with? % "HIVE_EXPORT:") %)
                                  (clojure.string/split-lines (str receipt)))
-                    text (when marker (subs marker (count "HIVE_EXPORT:")))
-                    separator (when text (clojure.string/last-index-of text "|"))]
-                (when-not separator (throw (ex-info "Missing export receipt" {})))
+                    parsed (when marker (clojure.data.json/read-str (subs marker (count "HIVE_EXPORT:"))))]
+                (when-not (and (map? parsed) (vector? (get parsed "objects"))
+                               (every? string? (get parsed "objects"))
+                               (seq (get parsed "objects")) (string? (get parsed "version")))
+                  (throw (ex-info "Missing export receipt" {})))
                 (let [{:keys [bytes sha256 bbox-mm]} (stl/inspect (:path request))]
                   {:ok {:path (:path request) :format :stl :sha256 sha256 :bytes bytes
                         :units :mm :mm (apply max bbox-mm) :bbox-mm bbox-mm
-                        :provenance {:source :blender :objects (vec (clojure.string/split (subs text 0 separator) #","))
-                                     :scale scale :blender-version (subs text (inc separator))}}}))
+                        :provenance {:source :blender :objects (get parsed "objects")
+                                     :scale scale :blender-version (get parsed "version")}}}))
               (catch Exception e
                 {:error {:kind :blender/invalid-stl :hint (.getMessage e)}}))))))))
 
