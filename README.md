@@ -1,8 +1,45 @@
 # hive-blender
 
-A host-neutral IAddon for the Blender MCP add-on's **base** command catalog and loopback socket.
-The built-in `export_scene` supports GLB and FBX only; STL requires a separately authorized
-`execute_code` operation and an installed Blender STL exporter. No native 3MF export is claimed.
+An agent can inspect a Blender scene, capture its viewport, and run guarded Blender commands through hive's loopback tool.
+
+![Amber hexagonal slabs and luminous rings in the Blender viewport](docs/showcase/stage-4.png)
+
+## What it looks like
+
+This is a live Blender 5.2 Flatpak run, not a mock render. [Follow the calls and exports](docs/showcase/README.md).
+
+| View | Call that produced it |
+| --- | --- |
+| ![Hexagonal slabs](docs/showcase/stage-1.png) | Confirmed `execute_code` calls built six rings of hexagonal slabs; `get_viewport_screenshot` captured the result. |
+| ![Amber material and dark ground](docs/showcase/stage-2.png) | Confirmed `execute_code` added amber material and a basalt ground; `get_viewport_screenshot` captured the result. |
+| ![Luminous rings and central hexagon](docs/showcase/stage-3.png) | Confirmed `execute_code` added seven rings and a central hexagon; `get_viewport_screenshot` captured the result. |
+| ![Camera view](docs/showcase/stage-4.png) | Confirmed `execute_code` placed the camera and light; `get_viewport_screenshot` captured the viewport. |
+
+## Try it
+
+Install and enable the reference Blender MCP `addon.py` in a GUI Blender instance on the same host. Set `BLENDERMCP_NO_UPDATE_CHECK=1` in Blender's environment before starting it. Its loopback listener uses port 9876 by default. Put this entry under `:addons` in hive-mcp's `config.edn`:
+
+```clojure
+{:addons {"hive.blender"
+          {:port 9876
+           :code-gate {:max-bytes 200000
+                       :deny-substrings ["import os" "subprocess" "requests" "urllib"
+                                         "premium" "telemetry" "polyhaven" "sketchfab"
+                                         "hyper3d" "tripo" "open("]
+                       :require-confirm true}}}}
+```
+
+Inspect the scene with the `blender` tool:
+
+```json
+{"command":"call","id":"get_scene_info","params":{}}
+```
+
+For code execution, use `"id":"execute_code"`, put Python in `"params":{"code":"..."}`, and add `"confirm":true`. CodeGate approval is required; this is not a Python sandbox.
+
+## Measured
+
+In the live Blender 5.2 run, `get_scene_info` returned **102 objects**. A CodeGate-confirmed `execute_code` exported **91 selected slabs** with `bpy.ops.wm.stl_export(..., export_selected_objects=True, apply_modifiers=True, global_scale=10.0)`. The resulting [STL](docs/showcase/hive-geometry-slab-130mm.stl) is about **130 mm** across. Without that source export scale, Blender units exported at about **13 mm**. The scaled STL was then sliced through hive-bambu: **15.1 s** wall time, **3.14 MB** `.gcode.3mf`, **9822 s** (2 h 44 min) estimated print time, **19.4 m** filament. These are measurements of this run, not general performance claims.
 
 ## Running
 
@@ -10,9 +47,9 @@ Install and enable the reference Blender MCP `addon.py` in a **GUI** Blender ins
 same host as hive-blender. Set `BLENDERMCP_NO_UPDATE_CHECK=1` **in Blender's environment** before
 launching to disable the add-on's network update check. The direct socket path never imports
 its Python MCP server; hive-blender makes no telemetry, update, Premium or cloud provider calls.
-Do not enable optional provider integrations in the baseline. Blender is not installed in the
-current test environment; tests use an in-process fake add-on server, **not verified against a
-real Blender**. Restrict access to the loopback listener: the reference add-on has no socket
+Do not enable optional provider integrations in the baseline. Automated tests use an
+in-process fake add-on server; the showcase above records a separate live Blender 5.2 run.
+Restrict access to the loopback listener: the reference add-on has no socket
 authentication and other local processes can send it commands directly.
 
 Configure the addon in hive-mcp's `config.edn` under `:addons`:
