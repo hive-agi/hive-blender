@@ -37,7 +37,16 @@ mutation might already have run; never replay it automatically. Every call uses 
 closed after reply or error, one outstanding command per socket. Configure socket time/size
 bounds via `socket-link`; the destination is hardwired to IPv4 loopback, default port 9876.
 
-The tool offers `catalog`, `doctor` and `call`; optional provider handlers are not catalogued.
+The tool offers `catalog`, `doctor`, `call` and `export_stl`; optional provider handlers are not catalogued.
+
+## Blender → Bambu hand-off
+
+Use two tool calls, with no dependency between the addons:
+
+1. `blender` with `{"command":"export_stl","params":{"path":"$HOME/models/cube.stl","objects":"selected"}}` (replace `$HOME` with your absolute home path before calling the tool). Choose a **new** path under your home directory (not `/tmp`); `objects` may be `selected`, `all`, or an array of object names/name prefixes. By default the exporter scales Blender metres-as-units by 1000 into millimetres. Specify `scale` (positive, at most 1000) or `target-mm` (positive largest bounding-box dimension), never both. It executes through the mandatory CodeGate with confirmation, verifies the binary STL and returns a ModelArtifact with `path`, `format`, `sha256`, `bytes`, `units`, `mm`, `bbox-mm` and `provenance`.
+2. `bambu` with `{"command":"slice","model":{"path":"$HOME/models/cube.stl","format":"stl","sha256":"<returned sha256>","bytes":<returned bytes>},"preset":{"printer":"<printer>","process":"<process>","filament":"<filament>"}}`. Supply the four shared keys from the artifact (the slicer re-fingerprints the file); choose your actual installed preset names. This does **not** print: upload/print still requires the independent PrintGate.
+
+The Bambu `ModelArtifact` schema is an open Malli map; its slicer fingerprint check currently compares the full map against its own four-key projection, so pass only those four keys to `slice`, not the extra Blender metadata. An export timeout after dispatch is `:blender/unknown-outcome`: inspect the destination manually; never retry automatically.
 Scene and object references are values containing file identity and names, not `bpy` pointers.
 See [native seams](docs/native-seams.md) for deployment limits and unanswered questions.
 

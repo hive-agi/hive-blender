@@ -14,7 +14,7 @@
   {:name "blender"
    :description "Blender base command catalog, doctor and guarded call."
    :inputSchema {:type "object" :required ["command"]
-                 :properties {"command" {:type "string" :enum ["catalog" "doctor" "call"]}
+                 :properties {"command" {:type "string" :enum ["catalog" "doctor" "call" "export_stl"]}
                               "id" {:type "string"} "params" {:type "object"}
                               "confirm" {:type "boolean"}}}
    :handler (fn [args]
@@ -23,6 +23,9 @@
                               "catalog" {:ok entries}
                               "doctor" {:ok (service/doctor link gate)}
                               "call" (service/call entries link gate (field "id") (or (field "params") {}) (field "confirm"))
+                              "export_stl" (service/export-stl entries link gate
+                                                               (let [params (or (field "params") {})]
+                                                                 (into {} (map (fn [[k v]] [(keyword k) (if (and (= (name k) "objects") (string? v)) (keyword v) v)]) params))))
                               {:error {:kind :blender/unknown-tool-command :hint "Choose catalog, doctor or call."}})]
                 (if-let [error (:error outcome)]
                   {:isError true :content [{:type "text" :text (str (:kind error) ": " (:hint error))}]}
