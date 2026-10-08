@@ -1,0 +1,28 @@
+{:normal
+ {:result
+  {:format :stl,
+   :bytes 134,
+   :bbox-mm [1.0 2.0 3.0],
+   :mm 3.0,
+   :provenance
+   {:source :blender,
+    :objects ["Cube"],
+    :scale 1000.0,
+    :blender-version "4.3.0"}},
+  :sent 1,
+  :confirmed true,
+  :query? false},
+ :target
+ {:result
+  {:format :stl,
+   :bytes 134,
+   :bbox-mm [1.0 2.0 3.0],
+   :mm 3.0,
+   :provenance
+   {:source :blender,
+    :objects ["Cube"],
+    :scale 1000.0,
+    :blender-version "4.3.0"}},
+  :sent 2,
+  :confirmed true,
+  :query? true}}
