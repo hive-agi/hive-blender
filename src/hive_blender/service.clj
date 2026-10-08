@@ -2,7 +2,10 @@
   "Validate intent before crossing the Blender link boundary."
   (:require [hive-blender.core :as core]
             [hive-blender.port :as port]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-blender.stl :as stl]
+            [clojure.string]
+            [clojure.data.json]))
 
 (defn call
   "Send a catalogued command; arbitrary code requires a mounted gate and confirmation."
@@ -42,6 +45,46 @@
         {:status :ready :protocol 13}
         {:status :degraded :reason (or (get-in result [:error :kind]) :blender/protocol-mismatch)
          :hint "Check GUI Blender add-on protocol version 13 and loopback port 9876."}))))
+
+(defn export-stl
+  "Export a new binary STL through the installed CodeGate and return a millimetre ModelArtifact."
+  [entries link gate request]
+  (if-not (try (stl/valid-request? request) (catch Exception _ false))
+    {:error {:kind :blender/invalid-request :hint "Use an unused .stl path under user.home, objects and one positive sizing method."}}
+    (let [query? (contains? request :target-mm)
+          bbox-result (when query? (call entries link gate "execute_code" {"code" (stl/script request 1 true)} true))
+          dims (when query? (stl/parse-bbox (get-in bbox-result [:ok "result"])))
+          scale (if query? (when (and dims (pos? (apply max dims)))
+                             (/ (double (:target-mm request)) (apply max dims)))
+                    (double (or (:scale request) 1000)))]
+      (cond
+        (= :blender/unknown-outcome (get-in bbox-result [:error :kind])) bbox-result
+        (and query? (not dims)) {:error {:kind :blender/export-failed :hint "Could not read mesh bbox from Blender."}}
+        (or (nil? scale) (not (<= 0.0 scale 1000.0)))
+        {:error {:kind :blender/invalid-request :hint "Derived scale exceeds 1000 or mesh has zero extent."}}
+        :else
+        (let [outcome (call entries link gate "execute_code" {"code" (stl/script request scale false)} true)]
+          (if-let [error (:error outcome)]
+            {:error (if (= :blender/unknown-outcome (:kind error)) error
+                        {:kind :blender/export-failed :hint (:hint error)})}
+            (try
+              (let [receipt (get-in outcome [:ok "result"])
+                    marker (some #(when (clojure.string/starts-with? % "HIVE_EXPORT:") %)
+                                 (clojure.string/split-lines (str receipt)))
+                    parsed (when marker (clojure.data.json/read-str (subs marker (count "HIVE_EXPORT:"))))]
+                (when-not (and (map? parsed) (vector? (get parsed "objects"))
+                               (every? string? (get parsed "objects"))
+                               (seq (get parsed "objects")) (string? (get parsed "version")))
+                  (throw (ex-info "Missing export receipt" {})))
+                (let [{:keys [bytes sha256 bbox-mm]} (stl/inspect (:path request))]
+                  {:ok {:path (:path request) :format :stl :sha256 sha256 :bytes bytes
+                        :units :mm :mm (apply max bbox-mm) :bbox-mm bbox-mm
+                        :provenance {:source :blender :objects (get parsed "objects")
+                                     :scale scale :blender-version (get parsed "version")}}}))
+              (catch Exception e
+                {:error {:kind :blender/invalid-stl :hint (.getMessage e)}}))))))))
+
+(m/=> export-stl [:=> [:cat [:sequential :map] :any :any :map] :map])
 
 (m/=> call [:=> [:cat [:sequential :map] :any :any :string :map :boolean] :map])
 (m/=> doctor [:=> [:cat :any :any] :map])

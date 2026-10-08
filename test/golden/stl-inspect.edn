@@ -1,0 +1,5 @@
+{:triangle
+ {:bytes 134,
+  :sha256
+  "8a3e8d7b3cad0bd20ebd45b3930f3fad9398a0735d997a3b4ce01411bdcf685b",
+  :bbox-mm [1.0 2.0 3.0]}}
